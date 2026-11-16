@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% block body %}
+<h1>Business rules</h1>
+<div class="mut" style="margin-bottom:14px">Change how strict the system is - no code needed. Saved rules apply to the next document processed.</div>
+<form method="post">
+<div class="grid g2">
+<div class="card"><h2>Approval &amp; confidence</h2><table>
+ <tr><td>Auto-approve only if field confidence &ge;</td><td><input name="auto_approve_min_confidence" type="number" step="0.01" value="{{rules.auto_approve_min_confidence}}"></td></tr>
+ <tr><td>Retry OCR (higher DPI / extra language) if confidence &lt;</td><td><input name="ocr_retry_below" type="number" step="0.01" value="{{rules.ocr_retry_below}}"></td></tr>
+ <tr><td>Flag any single field below</td><td><input name="low_field_confidence" type="number" step="0.01" value="{{rules.low_field_confidence}}"></td></tr>
+ <tr><td>Amount rounding tolerance (&#8377;)</td><td><input name="amount_tolerance" type="number" step="0.01" value="{{rules.amount_tolerance}}"></td></tr>
+ <tr><td>Require signatures</td><td><input type="checkbox" name="require_signatures" {{'checked' if rules.require_signatures}}></td></tr>
+ <tr><td>Manual minutes per document (for time-saved KPI)</td><td><input name="manual_minutes_per_doc" type="number" step="0.5" value="{{rules.manual_minutes_per_doc}}"></td></tr></table></div>
+<div class="card"><h2>Invoices</h2><table>
+ <tr><td>Flag invoices over (&#8377;)</td><td><input name="invoice_review_threshold" type="number" value="{{rules.invoice_review_threshold}}"></td></tr>
+ <tr><td>Require a PO number</td><td><input type="checkbox" name="require_po_for_invoices" {{'checked' if rules.require_po_for_invoices}}></td></tr>
+ <tr><td>PO amount tolerance (%)</td><td><input name="po_amount_tolerance_pct" type="number" step="0.5" value="{{rules.po_amount_tolerance_pct}}"></td></tr>
+ <tr><td>Vendor name match threshold (0-1)</td><td><input name="vendor_match_min_ratio" type="number" step="0.01" value="{{rules.vendor_match_min_ratio}}"></td></tr></table>
+ <h2 style="margin-top:16px">Contracts</h2><table>
+ <tr><td>Max payment terms (days)</td><td><input name="contract_max_payment_days" type="number" value="{{rules.contract_max_payment_days}}"></td></tr>
+ <tr><td>Min termination notice (days)</td><td><input name="contract_min_termination_notice_days" type="number" value="{{rules.contract_min_termination_notice_days}}"></td></tr>
+ <tr><td>Require liability cap</td><td><input type="checkbox" name="contract_require_liability_cap" {{'checked' if rules.contract_require_liability_cap}}></td></tr></table></div>
+</div>
+<div class="card"><h2>LLM <span class="badge {{'b-ok' if llm.on else 'b-low'}}">{{'on' if llm.on else 'off'}}</span></h2>
+ <div class="small mut" style="margin-bottom:8px">{{llm.note}}. Page images of invoices, contracts and claims are sent to the Anthropic API when this is on.</div>
+ <table><tr><td>Use the LLM as a second reader</td><td><input type="checkbox" name="llm_enabled" {{'checked' if rules.llm_enabled}}></td></tr>
+ <tr><td>Also send identity (KYC) documents to the API</td><td><input type="checkbox" name="llm_allow_kyc" {{'checked' if rules.llm_allow_kyc}}> <span class="small mut">off by default - privacy</span></td></tr></table></div>
+<div class="card"><h2>Review SLA (hours to resolve)</h2><div class="row">
+ {% for s in ['high','medium','low'] %}<label><span class="badge b-{{s}}">{{s}}</span> <input name="sla_{{s}}" type="number" step="0.5" style="width:90px" value="{{rules.sla_hours[s]}}"></label>{% endfor %}</div></div>
+
+<div class="card"><h2>Custom rules</h2>
+ <div class="mut small" style="margin-bottom:8px">e.g. <i>invoice &middot; total &middot; &gt; &middot; 50000 &rarr; flag</i>. Field names are those shown in the extracted-fields table (total, claim_amount, vendor, ...). Leave the field blank or tick delete to remove a rule.</div>
+ {% set cr = rules.custom_rules + [{'doc_type':'invoice','field':'','op':'>','value':'','severity':'medium','message':''}] %}
+ <input type="hidden" name="n_custom" value="{{cr|length}}">
+ <table><tr><th>Doc type</th><th>Field</th><th>Op</th><th>Value</th><th>Severity</th><th>Message</th><th>Delete</th></tr>
+ {% for c in cr %}{% set i=loop.index0 %}<tr>
+  <td><select name="c_type_{{i}}">{% for t in ['invoice','kyc','contract','claim','any'] %}<option {{'selected' if c.doc_type==t}}>{{t}}</option>{% endfor %}</select></td>
+  <td><input name="c_field_{{i}}" value="{{c.field}}" size="14"></td>
+  <td><select name="c_op_{{i}}">{% for o in ['>','>=','<','<=','==','!='] %}<option {{'selected' if c.op==o}}>{{o}}</option>{% endfor %}</select></td>
+  <td><input name="c_value_{{i}}" value="{{c.value}}" size="10"></td>
+  <td><select name="c_sev_{{i}}">{% for o in ['low','medium','high'] %}<option {{'selected' if c.severity==o}}>{{o}}</option>{% endfor %}</select></td>
+  <td><input name="c_msg_{{i}}" value="{{c.message}}" size="34"></td>
+  <td><input type="checkbox" name="c_del_{{i}}"></td></tr>{% endfor %}</table></div>
+<button class="p">Save rules</button>
+</form>
+<div class="card" style="margin-top:16px"><h2>Add a rule in plain English <span class="badge {{'b-ok' if llm.on else 'b-low'}}">needs LLM</span></h2>
+ <form method="post" action="{{url_for('rules_nl')}}" class="row">
+  <input name="text" style="flex:1;min-width:300px" placeholder="e.g. Flag any claim above 100000 as high severity" required {{'' if llm.on else 'disabled'}}>
+  <button class="p" {{'' if llm.on else 'disabled'}}>Add rule</button></form>
+ <div class="small mut" style="margin-top:6px">The model only translates your sentence into a rule; the rule is checked against known fields and shown in the table above.</div></div>
+{% endblock %}

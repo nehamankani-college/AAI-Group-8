@@ -1,0 +1,11 @@
+file,type_ok,decision_ok,got_decision,wrong_fields
+01_inv_apex_clean.pdf,True,False,needs_review,
+02_inv_mehta_cgst_sgst.pdf,True,True,needs_review,
+03_inv_unregistered_vendor.pdf,True,True,needs_review,
+04_inv_line_math_error.pdf,True,True,needs_review,
+05_inv_apex_photo.jpg,True,True,auto_approve,
+06_menu_unknown.jpg,True,True,reject,
+07_aadhaar_valid.jpg,True,True,auto_approve,
+08_contract_standard.pdf,True,True,auto_approve,
+09_claim_ok.pdf,True,True,auto_approve,
+10_inv_apex_duplicate.pdf,True,True,reject,

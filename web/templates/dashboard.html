@@ -1,0 +1,52 @@
+{% extends "base.html" %}{% block body %}
+<div class="row" style="justify-content:space-between;margin-bottom:14px">
+ <div><h1>Batch dashboard</h1><div class="mut">First-pass extraction and validation. Nothing here is a final approval - flagged documents go to a human.</div></div>
+ <div class="row">
+  <form method="post" action="{{url_for('demo')}}"><button class="p" onclick="this.textContent='Processing...'">&#9654; Quick demo (6 docs)</button></form>
+  <form method="post" action="{{url_for('demo_dataset')}}"><button class="p" style="background:#1a7f4b" onclick="this.textContent='Processing 20 docs...'">&#9654;&#9654; Full dataset demo (20 docs)</button></form>
+ </div>
+</div>
+
+<div class="card" style="padding:10px 16px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
+ <span class="badge {{'b-ok' if llm.on else 'b-low'}}">LLM {{'on' if llm.on else 'off'}}</span>
+ <span class="small mut">{% if llm.on %}A vision model reads each page as an independent second reader; disagreements go to review ({{llm.note}}).
+ {% else %}Running rules + OCR only - {{llm.note}}. Set the key and restart to enable the LLM cross-check.{% endif %}</span></div>
+<div class="grid g4">
+ <div class="card kpi"><div class="n">{{st.n}}</div><div class="l">documents processed</div></div>
+ <div class="card kpi"><div class="n">{{st.auto_rate}}%</div><div class="l">auto-approved</div></div>
+ <div class="card kpi"><div class="n">{{st.avg_s}}s</div><div class="l">avg processing time / doc</div></div>
+ <div class="card kpi"><div class="n">{{st.pending}}{% if st.overdue %} <span class="badge b-overdue">{{st.overdue}} overdue</span>{% endif %}</div><div class="l">waiting in review queue</div></div>
+ <div class="card kpi"><div class="n">~{{st.saved_min}} min</div><div class="l">⏱ Manual effort saved <span title="Assumes {{st.assumed_min}} min of manual keying per document (editable in Business rules). At this rate, ~{{(st.saved_min * 20)|round|int}} min/month at 20× current batch volume.">(assumes {{st.assumed_min|int}} min/doc · ~{{(st.saved_min * 20)|round|int}} min/mo)</span></div></div>
+</div>
+
+{% if st.n %}
+<div class="card">
+ <h2>Outcome mix</h2>
+ {% set colors={'auto_approved':'var(--ok)','needs_review':'var(--warn)','rejected':'var(--bad)','approved_by_reviewer':'#5b8def','rejected_by_reviewer':'#a35'} %}
+ <div class="bar">{% for k,v in st.by.items() %}<i style="width:{{100*v/st.n}}%;background:{{colors.get(k,'#999')}}" title="{{k}}: {{v}}"></i>{% endfor %}</div>
+ <div class="row small mut" style="margin-top:8px">{% for k,v in st.by.items() %}<span><span style="color:{{colors.get(k,'#999')}}">&#9632;</span> {{k.replace('_',' ')}}: {{v}}</span>{% endfor %}</div>
+</div>
+{% endif %}
+
+<div class="card">
+ <h2>Upload documents</h2>
+ <form method="post" action="{{url_for('upload')}}" enctype="multipart/form-data" class="row" onsubmit="this.querySelector('button').textContent='Processing...'">
+  <input type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff"><button class="p">Process</button>
+  <span class="mut small">PDF, scan or phone photo - invoices, KYC IDs, contracts, claims.</span>
+ </form>
+</div>
+
+<div class="card">
+ <h2>Documents</h2>
+ {% if not recs %}<div class="mut">Nothing processed yet. Click <b>Run demo batch</b> to see the pipeline on an invoice, a PAN card, an expired licence, a contract and two claim scans.</div>{% else %}
+ <table><tr><th>Document</th><th>Type</th><th>Status</th><th>Confidence</th><th>Top issue</th><th>Queue</th><th>Time</th></tr>
+ {% for r in recs %}<tr>
+  <td><a href="{{url_for('doc',doc_id=r.id)}}"><b>{{r.filename}}</b></a><div class="mut small">{{r.ingestion.pages}} page(s){% if r.ingestion.deskew_applied %} &middot; deskewed{% endif %}{% if r.ocr.attempts|length>1 %} &middot; {{r.ocr.attempts|length}} OCR passes{% endif %}</div></td>
+  <td>{{r.doc_type}}{% if r.subtype %}<div class="mut small">{{r.subtype.replace('_',' ')}}</div>{% endif %}</td>
+  <td><span class="badge b-{{r.status}}">{{r.status.replace('_',' ')}}</span></td>
+  <td>{{'%.2f'|format(r.score.confidence)}}</td>
+  <td class="small">{{r.score.reasons[0] if r.flags else 'None'}}{% if r.flags|length>1 %} <span class="mut">(+{{r.flags|length-1}})</span>{% endif %}</td>
+  <td>{% if r.review %}{{r.review.team}}<div><span class="badge b-{{r.review.status}}">{{r.review.status}}</span></div>{% else %}<span class="mut">-</span>{% endif %}</td>
+  <td class="mut">{{r.processing_seconds}}s</td></tr>{% endfor %}</table>{% endif %}
+</div>
+{% endblock %}

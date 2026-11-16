@@ -1,0 +1,103 @@
+{% extends "base.html" %}{% block body %}
+{% set s=r.score %}
+<div class="row" style="justify-content:space-between;margin-bottom:12px">
+ <div><a href="{{url_for('dashboard')}}" class="small">&larr; Dashboard</a>
+ <h1>{{r.filename}} <span class="badge b-{{r.status}}">{{r.status.replace('_',' ')}}</span></h1>
+ <div class="mut">{{r.doc_type}}{% if r.subtype %} / {{r.subtype.replace('_',' ')}}{% endif %} &middot; classified at {{'%.2f'|format(r.classification.confidence)}} &middot; {{r.ingestion.pages}} page(s) &middot; processed in {{r.processing_seconds}}s</div></div>
+ <div class="row"><a class="btn" href="{{url_for('download',doc_id=r.id,ext='json')}}">&#11015; JSON</a><a class="btn" href="{{url_for('download',doc_id=r.id,ext='csv')}}">&#11015; CSV</a></div>
+</div>
+
+<div class="grid g2" style="grid-template-columns:minmax(320px,5fr) minmax(380px,6fr);align-items:start">
+<div>
+ <div class="card" style="position:sticky;top:70px">
+  <h2>Source document <span class="mut small" id="srcnote">- click a field to see where it came from</span></h2>
+  <div class="row small" style="margin-bottom:8px"><label><input type="checkbox" id="showflags" checked> show flagged regions</label></div>
+  <div id="pages">
+  {% for p in r.pages %}<div class="pg" data-page="{{p.page}}" style="position:relative;margin-bottom:10px"><img src="{{url_for('file',doc_id=r.id,name='page%d.png'%p.page)}}" style="width:100%;display:block;border:1px solid var(--line);border-radius:6px"></div>{% endfor %}
+  </div>
+ </div>
+</div>
+
+<div>
+ <div class="card">
+  <h2>Decision</h2>
+  <div class="row"><span class="badge b-{{s.decision}}" style="background:var(--lowbg);color:var(--ink)">{{s.decision.replace('_',' ')}}</span>
+   <span>document score <b>{{'%.2f'|format(s.confidence)}}</b></span><span class="mut">OCR/field confidence {{'%.2f'|format(s.field_confidence)}} &middot; risk {{'%.2f'|format(s.risk)}}</span>
+   <span class="badge b-{{s.priority}}">priority: {{s.priority}}</span></div>
+  <ul style="margin:10px 0 0 18px;padding:0">{% for x in s.reasons %}<li>{{x}}</li>{% endfor %}</ul>
+  {% if r.llm_summary %}<div class="small" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--lowbg)"><b>Reviewer briefing</b> <span class="mut">(AI-written, does not affect the decision)</span><br>{{r.llm_summary}}</div>{% endif %}
+  {% if r.llm and r.llm.enabled %}<div class="small mut" style="margin-top:8px">LLM: {{r.llm.model}} &middot; {{r.llm.tokens.in}} in / {{r.llm.tokens.out}} out tokens{% if r.llm.cross_check %} &middot; agree {{r.llm.cross_check.agree|length}}, disagree {{r.llm.cross_check.disagree|length}}, filled {{r.llm.cross_check.filled|length}}{% endif %}</div>{% endif %}
+  {% if r.review %}<div class="small mut" style="margin-top:8px">Routed to <b>{{r.review.team}}</b> &middot; SLA {{r.review.sla_hours|int}}h (due {{r.review.sla_due|ts}}) &middot; {{r.review.status}}{% if r.review.turnaround_s is not none %} &middot; turnaround {{r.review.turnaround_s|dur}}{% endif %}</div>{% endif %}
+  {% if r.review and r.review.status=='pending' %}
+  <form method="post" action="{{url_for('decide',doc_id=r.id)}}" class="row" style="margin-top:10px">
+   <button class="ok" name="resolution" value="approved">Approve as is</button><button class="bad" name="resolution" value="rejected">Reject</button>
+   <a href="{{url_for('review_queue')}}" class="small">Open in review queue</a></form>{% endif %}
+ </div>
+
+ {% if r.flags %}
+ <div class="card"><h2>Issues found ({{r.flags|length}})</h2>
+ {% for f in r.flags %}{% set it = (r.review.entries|selectattr('flag_index','equalto',loop.index0)|list|first) if r.review else none %}
+  <div style="border-left:4px solid var(--{{'bad' if f.severity=='high' else 'warn' if f.severity=='medium' else 'line'}});padding:2px 12px;margin-bottom:14px" class="flagrow" data-flag="{{loop.index0}}">
+   <div><span class="badge b-{{f.severity}}">{{f.severity}}</span> <b>{{f.message}}</b></div>
+   {% if f.explanation %}<div class="small" style="margin-top:3px">{{f.explanation}}</div>{% endif %}
+   <div class="small mut">&rarr; {{f.recommendation}} <span title="agent">[{{f.agent}}]</span></div>
+   {% if it and it.crop %}<img class="crop" style="margin-top:6px;max-height:200px" src="{{url_for('file',doc_id=r.id,name='crops/'+it.crop)}}">{% endif %}
+  </div>{% endfor %}</div>{% endif %}
+
+ {% if r.corrections %}
+ <div class="card"><h2>Before / after corrections</h2>
+  <table><tr><th>Field</th><th>AI extracted</th><th>Corrected</th><th>When</th></tr>
+  {% for c in r.corrections %}<tr><td>{{c.field}}</td><td><del>{{c.before}}</del></td><td><ins>{{c.after}}</ins></td><td class="mut small">{{c.ts|ts}} by {{c.by}}</td></tr>{% endfor %}</table></div>{% endif %}
+
+ <div class="card"><h2>Extracted fields</h2>
+  <table><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Source</th><th>Vision model</th></tr>
+  {% for k,f in r.fields.items() %}<tr class="fieldrow" data-field="{{k}}" style="cursor:pointer">
+   <td>{{k.replace('_',' ')}}</td>
+   <td><b>{% if k in ('total','subtotal','tax_total','claim_amount') %}{{f.value|money}}{% else %}{{f.value}}{% endif %}</b>{% if f.corrected %} <span class="badge b-reviewed">corrected</span>{% endif %}</td>
+   <td>{% set c=f.confidence %}<span class="conf {{'lo' if c<0.6 else 'mid' if c<0.85}}"><i style="width:{{c*100}}%"></i></span>{{'%.2f'|format(c)}}</td>
+   <td class="small mut">{% if f.page %}{{r.filename}}#p{{f.page}}{% else %}{{f.method}}{% endif %}{% if f.method=='llm+ocr' %} <span class="badge b-low">filled by LLM</span>{% endif %}</td>
+   <td class="small">{% if f.llm %}{% if f.llm.agree %}<span class="badge b-ok">&#10003; agrees</span>{% elif f.llm.agree is none %}<span class="badge b-low">only source</span>{% else %}<span class="badge b-medium">&ne; {{f.llm.value}}</span>{% endif %}{% else %}<span class="mut">-</span>{% endif %}</td></tr>{% endfor %}</table>
+  {% if r.fields %}<form method="post" action="{{url_for('correct',doc_id=r.id)}}" class="row" style="margin-top:12px"><span class="small mut">Correct a field:</span>
+   <select name="field">{% for k in r.fields %}<option value="{{k}}">{{k}}</option>{% endfor %}</select><input name="value" placeholder="new value" required><button>Apply &amp; re-validate</button></form>{% endif %}
+ </div>
+
+ {% if r.tables.line_items %}
+ <div class="card"><h2>Line items</h2><table><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th><th>Page</th></tr>
+  {% for i in r.tables.line_items %}<tr><td>{{i.description}}</td><td>{{i.qty}}</td><td>{{i.rate|money}}</td><td>{{i.amount|money}}</td><td class="mut">p{{i.page}}</td></tr>{% endfor %}
+  <tr><td colspan="3"><b>Recomputed sum</b></td><td colspan="2"><b>{{(r.tables.line_items|sum(attribute='amount'))|money}}</b></td></tr></table></div>{% endif %}
+
+ {% if r.clause_comparison %}
+ <div class="card"><h2>Clause comparison vs. standard template</h2>
+ {% for c in r.clause_comparison %}<div style="margin-bottom:12px"><span class="badge b-{{'ok' if c.status=='standard' else 'medium'}}">{{c.status}}</span> <b>{{c.title}}</b>
+  <div class="small" style="margin-top:3px">{% for d in c.diff %}{% if d.op=='same' %}{{d.text}} {% elif d.op=='del' %}<del>{{d.text}}</del> {% else %}<ins>{{d.text}}</ins> {% endif %}{% endfor %}{% if not c.diff and c.found %}{{c.found}}{% endif %}</div></div>{% endfor %}
+  <div class="small mut"><del>standard wording removed</del> / <ins>contract wording added</ins></div></div>{% endif %}
+
+ <div class="card"><details><summary>Audit trail ({{r.audit|length}} events)</summary>
+  <table style="margin-top:8px"><tr><th>Agent</th><th>Action</th><th>Detail</th></tr>
+  {% for e in r.audit %}<tr><td><code>{{e.agent}}</code></td><td>{{e.action}}</td><td class="small mut"><code>{{e.detail|tojson|truncate(260)}}</code></td></tr>{% endfor %}</table></details>
+  <details style="margin-top:10px"><summary>OCR passes</summary><table><tr><th>#</th><th>Lang</th><th>DPI</th><th>Scale</th><th>Mean conf</th><th>Quality</th></tr>
+  {% for a in r.ocr.attempts %}<tr><td>{{a.attempt}}</td><td>{{a.lang}}</td><td>{{a.dpi}}</td><td>{{a.upscale}}</td><td>{{a.mean_conf}}</td><td>{{a.quality}}</td></tr>{% endfor %}</table></details></div>
+</div></div>
+
+<script>
+const O={{overlay|safe}};
+const pages={};document.querySelectorAll('.pg').forEach(e=>pages[+e.dataset.page]=e);
+function clearBoxes(cls){document.querySelectorAll('.'+cls).forEach(e=>e.remove())}
+function draw(page,boxes,cls,color,fill){
+  const host=pages[page];if(!host)return;const P=O.pages.find(p=>p.page==page);
+  boxes.forEach(b=>{const d=document.createElement('div');d.className=cls;
+   d.style.cssText=`position:absolute;left:${(b[0]-6)/P.width*100}%;top:${(b[1]-6)/P.height*100}%;width:${(b[2]-b[0]+12)/P.width*100}%;height:${(b[3]-b[1]+12)/P.height*100}%;border:2px solid ${color};background:${fill};border-radius:3px;pointer-events:none`;
+   host.appendChild(d)})}
+function drawFlags(){clearBoxes('fb');if(!document.getElementById('showflags').checked)return;
+  O.flags.forEach(f=>f.refs.forEach(r=>draw(r.page,r.boxes,'fb',f.sev=='high'?'#d92d20':'#f79009','rgba(217,45,32,.10)')))}
+document.getElementById('showflags').onchange=drawFlags;drawFlags();
+document.querySelectorAll('.fieldrow').forEach(tr=>tr.onclick=()=>{
+  const f=O.fields[tr.dataset.field];clearBoxes('sel');if(!f)return;
+  draw(f.page,f.boxes,'sel','#2b50d6','rgba(43,80,214,.18)');
+  pages[f.page].scrollIntoView({behavior:'smooth',block:'center'});
+  document.getElementById('srcnote').textContent='- '+tr.dataset.field.replace('_',' ')+' on page '+f.page;});
+document.querySelectorAll('.flagrow').forEach(el=>el.onclick=()=>{
+  const f=O.flags.find(x=>x.i==el.dataset.flag);clearBoxes('sel');if(!f||!f.refs.length)return;
+  f.refs.forEach(r=>draw(r.page,r.boxes,'sel','#2b50d6','rgba(43,80,214,.2)'));pages[f.refs[0].page].scrollIntoView({behavior:'smooth',block:'center'})});
+</script>
+{% endblock %}

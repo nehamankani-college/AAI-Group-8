@@ -1,0 +1,45 @@
+{% extends "base.html" %}{% block body %}
+<h1>Review queue</h1>
+<div class="mut" style="margin-bottom:14px">Documents routed by type: invoices &rarr; Finance, KYC &rarr; Compliance, contracts &rarr; Legal, claims &rarr; Claims. Sorted by SLA deadline.</div>
+<div class="grid g4">
+ <div class="card kpi"><div class="n">{{st.pending}}</div><div class="l">pending</div></div>
+ <div class="card kpi"><div class="n">{{st.overdue}}</div><div class="l">past SLA</div></div>
+ <div class="card kpi"><div class="n">{{st.avg_turnaround|dur if st.avg_turnaround is not none else '-'}}</div><div class="l">avg review turnaround</div></div>
+ <div class="card kpi"><div class="n">{{done|length}}</div><div class="l">resolved</div></div>
+</div>
+
+{% if not teams %}<div class="card mut">Queue is empty. Run the demo batch from the dashboard.</div>{% endif %}
+{% for team, docs in teams.items() %}
+<h2 style="margin:18px 0 8px">{{team}} <span class="mut small">({{docs|length}})</span></h2>
+{% for r in docs %}
+<div class="card">
+ <div class="row" style="justify-content:space-between">
+  <div><a href="{{url_for('doc',doc_id=r.id)}}"><b>{{r.filename}}</b></a> <span class="badge b-{{r.review.priority}}">{{r.review.priority}}</span>
+   <span class="badge b-{{sla_state(r.review)}}">SLA {{sla_state(r.review).replace('_',' ')}}</span>
+   <span class="mut small">due {{r.review.sla_due|ts}}</span></div>
+  <form method="post" action="{{url_for('decide',doc_id=r.id)}}" class="row"><input type="hidden" name="next" value="{{url_for('review_queue')}}">
+   <button class="ok" name="resolution" value="approved">Approve as is</button><button class="bad" name="resolution" value="rejected">Reject</button></form>
+ </div>
+ {% if r.llm_summary %}<div class="small" style="margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--lowbg)"><b>Briefing</b> <span class="mut">(AI-written)</span>: {{r.llm_summary}}</div>{% endif %}
+ <div class="grid g2" style="margin-top:12px">
+ {% for it in r.review.entries %}
+  <div style="border:1px solid var(--line);border-radius:10px;padding:12px">
+   <div><span class="badge b-{{it.severity}}">{{it.severity}}</span> <b>{{it.message}}</b></div>
+   <div class="small" style="margin:4px 0">{{it.explanation}}</div>
+   {% if it.crop %}<img class="crop" src="{{url_for('file',doc_id=r.id,name='crops/'+it.crop)}}">{% endif %}
+   <div class="small mut" style="margin-top:6px">&rarr; {{it.recommendation}}</div>
+   {% if it.suggestion %}<div class="small" style="margin-top:4px">Suggested correction: <b>{{it.suggestion.field}} = {{it.suggestion.value}}</b> <span class="mut">({{it.suggestion.note}})</span></div>{% endif %}
+   {% if it.field and it.field in r.fields %}
+   <form method="post" action="{{url_for('correct',doc_id=r.id)}}" class="row" style="margin-top:8px"><input type="hidden" name="next" value="{{url_for('review_queue')}}">
+    <input type="hidden" name="field" value="{{it.suggestion.field if it.suggestion else it.field}}">
+    <span class="small mut">{{it.suggestion.field if it.suggestion else it.field}} =</span>
+    <input name="value" value="{{it.suggestion.value if it.suggestion else r.fields[it.field].value}}" size="14"><button class="p">Apply &amp; re-validate</button></form>
+   {% endif %}
+  </div>{% endfor %}
+ </div>
+</div>{% endfor %}{% endfor %}
+
+{% if done %}<h2 style="margin:22px 0 8px">Resolved</h2><div class="card"><table><tr><th>Document</th><th>Team</th><th>Outcome</th><th>Turnaround</th><th>SLA</th><th>Corrections</th></tr>
+{% for r in done %}<tr><td><a href="{{url_for('doc',doc_id=r.id)}}">{{r.filename}}</a></td><td>{{r.review.team}}</td><td><span class="badge b-{{r.status}}">{{r.status.replace('_',' ')}}</span></td><td>{{r.review.turnaround_s|dur}}</td><td><span class="badge b-{{sla_state(r.review)}}">{{sla_state(r.review)}}</span></td>
+<td class="small">{% for c in r.corrections %}{{c.field}}: <del>{{c.before}}</del> <ins>{{c.after}}</ins><br>{% endfor %}</td></tr>{% endfor %}</table></div>{% endif %}
+{% endblock %}

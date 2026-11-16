@@ -1,0 +1,8 @@
+flask
+pytesseract
+opencv-python
+pillow
+numpy
+pymupdf
+reportlab
+anthropic

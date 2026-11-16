@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DocAgent - Document Intelligence</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mut:#667085;--line:#e4e7ec;--brand:#2b50d6;--ok:#12805c;--okbg:#e3f6ee;--warn:#a15c00;--warnbg:#fff1d6;--bad:#b42318;--badbg:#fde8e6;--low:#475467;--lowbg:#eef0f3}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1319;--card:#171c25;--ink:#e8ebf0;--mut:#98a2b3;--line:#2a3140;--brand:#7d98ff;--ok:#4cd3a0;--okbg:#10372b;--warn:#f6b94e;--warnbg:#3d2c0a;--bad:#ff8a80;--badbg:#431c19;--low:#b6bfcc;--lowbg:#252c39}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+header{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.nav{max-width:1280px;margin:auto;padding:0 20px;display:flex;align-items:center;gap:6px;height:56px}
+.logo{font-weight:700;margin-right:18px;font-size:17px}.nav a.t{padding:8px 12px;border-radius:8px;color:var(--mut)}
+.nav a.t.on{background:var(--lowbg);color:var(--ink);text-decoration:none}
+main{max-width:1280px;margin:22px auto;padding:0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:0 0 12px}h3{font-size:14px;margin:0 0 6px}
+.mut{color:var(--mut)}.small{font-size:13px}
+.grid{display:grid;gap:16px}.g4{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(380px,1fr))}
+.kpi .n{font-size:28px;font-weight:700}.kpi .l{color:var(--mut);font-size:13px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600}
+.b-auto_approved,.b-approved_by_reviewer,.b-ok,.b-none,.b-met,.b-on_track{background:var(--okbg);color:var(--ok)}
+.b-needs_review,.b-medium,.b-pending{background:var(--warnbg);color:var(--warn)}
+.b-rejected,.b-rejected_by_reviewer,.b-high,.b-overdue,.b-breached{background:var(--badbg);color:var(--bad)}
+.b-low,.b-reviewed{background:var(--lowbg);color:var(--low)}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 14px;border-radius:8px;cursor:pointer}
+button.p,.btn.p{background:var(--brand);border-color:var(--brand);color:#fff}button.ok{background:var(--ok);border-color:var(--ok);color:#fff}button.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+input,select{font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--lowbg)}.bar i{display:block}
+.conf{display:inline-block;width:54px;height:6px;background:var(--lowbg);border-radius:9px;vertical-align:middle;margin-right:6px;overflow:hidden}.conf i{display:block;height:100%;background:var(--ok)}
+.conf.lo i{background:var(--bad)}.conf.mid i{background:var(--warn)}
+.flash{background:var(--warnbg);color:var(--warn);padding:10px 14px;border-radius:10px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+code,pre{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}pre{background:var(--bg);padding:10px;border-radius:8px;overflow:auto;max-height:340px}
+.crop{max-width:100%;border:1px solid var(--line);border-radius:8px}
+del{background:var(--badbg);color:var(--bad)}ins{background:var(--okbg);color:var(--ok);text-decoration:none}
+details summary{cursor:pointer;font-weight:600}
+</style></head><body>
+<header><div class="nav"><span class="logo">&#128196; DocAgent</span>
+<a class="t {{'on' if page=='dashboard'}}" href="{{url_for('dashboard')}}">Batch dashboard</a>
+<a class="t {{'on' if page=='review'}}" href="{{url_for('review_queue')}}">Review queue</a>
+<a class="t {{'on' if page=='rules'}}" href="{{url_for('rules_panel')}}">Business rules</a></div></header>
+<main>
+{% with m = get_flashed_messages() %}{% for x in m %}<div class="flash">{{x}}</div>{% endfor %}{% endwith %}
+{% block body %}{% endblock %}
+</main></body></html>

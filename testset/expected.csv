@@ -1,0 +1,11 @@
+file,doc_type,decision,fields
+01_inv_apex_clean.pdf,invoice,auto_approve,"{""invoice_no"": ""APX-2026-044"", ""invoice_date"": ""2026-10-10"", ""vendor"": ""Apex Packaging LLP"", ""po_number"": ""PO-3310"", ""subtotal"": 16000.0, ""total"": 18880.0}"
+02_inv_mehta_cgst_sgst.pdf,invoice,needs_review,"{""invoice_no"": ""MSW/2026/118"", ""invoice_date"": ""2026-10-05"", ""vendor"": ""Mehta Steel Works"", ""po_number"": ""PO-2305"", ""subtotal"": 91000.0, ""total"": 107380.0}"
+03_inv_unregistered_vendor.pdf,invoice,needs_review,"{""invoice_no"": ""SS-5521"", ""vendor"": ""Sunrise Stationers"", ""po_number"": ""PO-2291"", ""total"": 16800.0}"
+04_inv_line_math_error.pdf,invoice,needs_review,"{""invoice_no"": ""APX-2026-051"", ""po_number"": ""PO-3310"", ""total"": 20060.0}"
+05_inv_apex_photo.jpg,invoice,auto_approve,"{""invoice_no"": ""APX-2026-060"", ""invoice_date"": ""2026-10-12"", ""vendor"": ""Apex Packaging LLP"", ""po_number"": ""PO-3310"", ""subtotal"": 16000.0, ""total"": 18880.0}"
+06_menu_unknown.jpg,other,reject,{}
+07_aadhaar_valid.jpg,kyc,auto_approve,"{""id_number"": ""2345 6789 0124"", ""name"": ""Anita Deshmukh"", ""dob"": ""1990-08-12""}"
+08_contract_standard.pdf,contract,auto_approve,"{""effective_date"": ""2026-10-02"", ""party_b"": ""Apex Packaging LLP"", ""payment_terms_days"": 30, ""termination_notice_days"": 30}"
+09_claim_ok.pdf,claim,auto_approve,"{""claim_number"": ""CLM-6002"", ""policy_number"": ""POL-77120"", ""claim_amount"": 90000.0, ""date_of_loss"": ""2026-10-05""}"
+10_inv_apex_duplicate.pdf,invoice,reject,"{""invoice_no"": ""APX-2026-044"", ""total"": 18880.0}"

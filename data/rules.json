@@ -1,0 +1,43 @@
+{
+  "as_of": null,
+  "auto_approve_min_confidence": 0.85,
+  "ocr_retry_below": 0.8,
+  "low_field_confidence": 0.6,
+  "amount_tolerance": 1.0,
+  "invoice_review_threshold": 50000,
+  "require_po_for_invoices": true,
+  "po_amount_tolerance_pct": 5,
+  "vendor_match_min_ratio": 0.85,
+  "require_signatures": true,
+  "min_customer_age": 18,
+  "contract_max_payment_days": 45,
+  "contract_min_termination_notice_days": 30,
+  "contract_require_liability_cap": true,
+  "sla_hours": {
+    "high": 4,
+    "medium": 24,
+    "low": 72
+  },
+  "manual_minutes_per_doc": 6,
+  "custom_rules": [
+    {
+      "doc_type": "invoice",
+      "field": "total",
+      "op": ">",
+      "value": "40000",
+      "severity": "low",
+      "message": "Invoice above 40,000 - needs second approver (example SME rule)"
+    },
+    {
+      "doc_type": "invoice",
+      "field": "total",
+      "op": ">",
+      "value": "50000",
+      "severity": "high",
+      "message": "Invoice total exceeds 50000"
+    }
+  ],
+  "llm_enabled": true,
+  "llm_allow_kyc": false,
+  "llm_max_pages": 3
+}
